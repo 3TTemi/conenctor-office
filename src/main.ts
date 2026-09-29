@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { World } from './game/World';
-import { Player } from './game/Player';
+import { Player, CameraMode } from './game/Player';
 import { CharacterManager } from './game/Character';
 import { DebriefPanel } from './ui/DebriefPanel';
 import { Prompt } from './ui/Prompt';
@@ -23,6 +23,10 @@ class ConnectorOffice {
   
   private clock: THREE.Clock;
   private isRunning: boolean = true;
+  
+  private cameraToggleBtn: HTMLElement;
+  private mouseHint: HTMLElement;
+  private crosshair: HTMLElement;
 
   constructor() {
     // Initialize Three.js
@@ -50,17 +54,51 @@ class ConnectorOffice {
     // Initialize UI
     this.debriefPanel = new DebriefPanel();
     this.prompt = new Prompt();
+    this.cameraToggleBtn = document.getElementById('camera-toggle')!;
+    this.mouseHint = document.getElementById('mouse-hint')!;
+    this.crosshair = document.getElementById('crosshair')!;
     
     this.clock = new THREE.Clock();
 
     // Setup event listeners
     this.setupEventListeners();
+    this.setupCameraUI();
     
     // Start game loop
     this.animate();
 
     console.log('🏢 Connector Office initialized!');
-    console.log('Use WASD to move, E to talk to characters');
+    console.log('Use WASD to move, click to look around, E to talk to characters');
+  }
+  
+  private setupCameraUI(): void {
+    this.cameraToggleBtn.addEventListener('click', () => {
+      this.player.toggleCameraMode();
+    });
+    
+    this.player.onCameraModeChange = (mode: CameraMode) => {
+      this.updateCameraUI(mode);
+    };
+    
+    document.addEventListener('pointerlockchange', () => {
+      const isLocked = document.pointerLockElement !== null;
+      this.mouseHint.classList.toggle('hidden', isLocked);
+      this.crosshair.classList.toggle('hidden', !isLocked || this.player.cameraMode !== 'first-person');
+    });
+    
+    this.updateCameraUI(this.player.cameraMode);
+  }
+  
+  private updateCameraUI(mode: CameraMode): void {
+    if (mode === 'first-person') {
+      this.cameraToggleBtn.textContent = '📷 First-Person [V]';
+      this.mouseHint.classList.remove('hidden');
+      this.crosshair.classList.add('hidden');
+    } else {
+      this.cameraToggleBtn.textContent = '🗺️ Isometric [V]';
+      this.mouseHint.classList.add('hidden');
+      this.crosshair.classList.add('hidden');
+    }
   }
 
   private setupEventListeners(): void {

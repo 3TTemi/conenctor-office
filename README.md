@@ -18,9 +18,16 @@ Open http://localhost:3000 in your browser.
 | Key | Action |
 |-----|--------|
 | `W` `A` `S` `D` | Move around |
+| `Mouse` | Look around (click to enable pointer lock) |
+| `Q` / `←` `→` | Turn left/right (when mouse not locked) |
 | `E` | Talk to nearby character |
+| `V` | Toggle camera view (First-Person / Isometric) |
 | `Tab` | Switch accounts (when viewing multi-account apps) |
-| `Esc` | Close dialog |
+| `Esc` | Close dialog / unlock mouse |
+
+**Camera Modes:**
+- **First-Person** (default): Click to lock mouse, look around freely
+- **Isometric**: Top-down angled view, see the whole office
 
 ## 30-Second Demo Script
 
