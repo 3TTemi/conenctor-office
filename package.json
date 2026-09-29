@@ -1,0 +1,30 @@
+{
+  "name": "connector-office",
+  "version": "1.0.0",
+  "description": "Minecraft-style virtual office where app characters debrief you on daily activity",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3TTemi/conenctor-office.git"
+  },
+  "keywords": ["hackathon", "voxel", "minecraft", "virtual-office", "three.js"],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/3TTemi/conenctor-office/issues"
+  },
+  "homepage": "https://github.com/3TTemi/conenctor-office#readme",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
