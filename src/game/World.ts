@@ -1,8 +1,8 @@
 import * as THREE from 'three';
+import { TextureGenerator } from './Textures';
 
 /**
- * Creates the Minecraft-style voxel office world.
- * Uses blocky geometry, pixel-like textures, and a grass/dirt/wood palette.
+ * Creates a Minecraft-style voxel office world with pixel textures.
  */
 export class World {
   private scene: THREE.Scene;
@@ -13,446 +13,367 @@ export class World {
   }
 
   private buildWorld(): void {
+    this.createSky();
+    this.createGround();
     this.createFloor();
     this.createWalls();
     this.createFurniture();
+    this.createTorches();
     this.createDecorations();
     this.createLighting();
   }
 
-  private createFloor(): void {
-    // Main grass floor
-    const grassGeometry = new THREE.BoxGeometry(30, 0.5, 30);
-    const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4a8f29 });
-    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
-    grass.position.set(0, -0.25, 0);
-    grass.receiveShadow = true;
-    this.scene.add(grass);
-
-    // Dirt layer underneath (visible at edges)
-    const dirtGeometry = new THREE.BoxGeometry(32, 1, 32);
-    const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const dirt = new THREE.Mesh(dirtGeometry, dirtMaterial);
-    dirt.position.set(0, -1, 0);
-    this.scene.add(dirt);
-
-    // Stone foundation
-    const stoneGeometry = new THREE.BoxGeometry(34, 0.5, 34);
-    const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-    const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
-    stone.position.set(0, -1.75, 0);
-    this.scene.add(stone);
-
-    // Indoor wooden floor area
-    const woodFloorGeometry = new THREE.BoxGeometry(20, 0.1, 20);
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0xDEB887 });
-    const woodFloor = new THREE.Mesh(woodFloorGeometry, woodMaterial);
-    woodFloor.position.set(0, 0.05, 2);
-    woodFloor.receiveShadow = true;
-    this.scene.add(woodFloor);
-
-    // Wood plank pattern (simple stripes)
-    for (let i = -9; i <= 9; i += 2) {
-      const plankLine = new THREE.BoxGeometry(20, 0.02, 0.1);
-      const darkWood = new THREE.MeshLambertMaterial({ color: 0xA0522D });
-      const line = new THREE.Mesh(plankLine, darkWood);
-      line.position.set(0, 0.12, i + 2);
-      this.scene.add(line);
-    }
-  }
-
-  private createWalls(): void {
-    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xD2B48C }); // Tan/sandstone
-    const wallHeight = 4;
-    const wallThickness = 0.5;
-
-    // Back wall
-    const backWall = new THREE.BoxGeometry(24, wallHeight, wallThickness);
-    const back = new THREE.Mesh(backWall, wallMaterial);
-    back.position.set(0, wallHeight / 2, -8);
-    back.castShadow = true;
-    this.scene.add(back);
-
-    // Side walls (partial - office is open air Minecraft style)
-    const sideGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, 8);
-    
-    const leftWall = new THREE.Mesh(sideGeometry, wallMaterial);
-    leftWall.position.set(-12, wallHeight / 2, -4);
-    leftWall.castShadow = true;
-    this.scene.add(leftWall);
-
-    const rightWall = new THREE.Mesh(sideGeometry, wallMaterial);
-    rightWall.position.set(12, wallHeight / 2, -4);
-    rightWall.castShadow = true;
-    this.scene.add(rightWall);
-
-    // Wall trim (darker wood)
-    const trimMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const trimGeometry = new THREE.BoxGeometry(24.5, 0.3, 0.6);
-    const topTrim = new THREE.Mesh(trimGeometry, trimMaterial);
-    topTrim.position.set(0, wallHeight + 0.15, -8);
-    this.scene.add(topTrim);
-
-    const bottomTrim = new THREE.Mesh(trimGeometry, trimMaterial);
-    bottomTrim.position.set(0, 0.15, -8);
-    this.scene.add(bottomTrim);
-
-    // Windows (glass blocks)
-    const glassMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x87CEEB, 
-      transparent: true, 
-      opacity: 0.5 
-    });
-    
-    for (let x = -8; x <= 8; x += 4) {
-      const windowGeometry = new THREE.BoxGeometry(2, 2, 0.2);
-      const windowMesh = new THREE.Mesh(windowGeometry, glassMaterial);
-      windowMesh.position.set(x, 2.5, -7.8);
-      this.scene.add(windowMesh);
-
-      // Window frame
-      const frameMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
-      const frameTop = new THREE.BoxGeometry(2.3, 0.15, 0.25);
-      const frameTopMesh = new THREE.Mesh(frameTop, frameMaterial);
-      frameTopMesh.position.set(x, 3.6, -7.75);
-      this.scene.add(frameTopMesh);
-
-      const frameBottom = new THREE.Mesh(frameTop, frameMaterial);
-      frameBottom.position.set(x, 1.4, -7.75);
-      this.scene.add(frameBottom);
-    }
-  }
-
-  private createFurniture(): void {
-    // Desks for each character area
-    this.createDesk(-6, -5);  // Gmail area
-    this.createDesk(6, -5);   // Calendar area
-    this.createDesk(-6, 3);   // Notion area
-    this.createDesk(6, 3);    // Drive area
-    this.createDesk(0, 6);    // GitHub area (center back)
-
-    // Bookshelves
-    this.createBookshelf(-10, -6);
-    this.createBookshelf(10, -6);
-
-    // Plants
-    this.createPlant(-3, -6);
-    this.createPlant(3, -6);
-    this.createPlant(-8, 8);
-    this.createPlant(8, 8);
-
-    // Center meeting table
-    this.createMeetingTable(0, 0);
-
-    // Coffee station
-    this.createCoffeeStation(10, 8);
-  }
-
-  private createDesk(x: number, z: number): void {
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    
-    // Desk top
-    const topGeometry = new THREE.BoxGeometry(3, 0.2, 1.5);
-    const top = new THREE.Mesh(topGeometry, woodMaterial);
-    top.position.set(x, 1, z);
-    top.castShadow = true;
-    this.scene.add(top);
-
-    // Desk legs
-    const legGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
-    const positions = [
-      [x - 1.3, 0.5, z - 0.6],
-      [x + 1.3, 0.5, z - 0.6],
-      [x - 1.3, 0.5, z + 0.6],
-      [x + 1.3, 0.5, z + 0.6],
+  private createSky(): void {
+    const skyGeo = new THREE.BoxGeometry(200, 200, 200);
+    const skyColors = [
+      new THREE.Color(0x87CEEB),
+      new THREE.Color(0x87CEEB),
+      new THREE.Color(0x6BB3E0),
+      new THREE.Color(0x5BA3D0),
+      new THREE.Color(0x87CEEB),
+      new THREE.Color(0x87CEEB),
     ];
     
-    positions.forEach(([px, py, pz]) => {
-      const leg = new THREE.Mesh(legGeometry, woodMaterial);
-      leg.position.set(px, py, pz);
-      leg.castShadow = true;
-      this.scene.add(leg);
-    });
-
-    // Computer monitor (blocky)
-    const monitorMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const screenMaterial = new THREE.MeshLambertMaterial({ color: 0x4a90d9 });
+    const skyMats = skyColors.map(color => 
+      new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })
+    );
     
-    const monitorBase = new THREE.BoxGeometry(0.4, 0.1, 0.3);
-    const base = new THREE.Mesh(monitorBase, monitorMaterial);
-    base.position.set(x, 1.15, z);
-    this.scene.add(base);
+    const sky = new THREE.Mesh(skyGeo, skyMats);
+    sky.position.y = 50;
+    this.scene.add(sky);
 
-    const monitorStand = new THREE.BoxGeometry(0.1, 0.4, 0.1);
-    const stand = new THREE.Mesh(monitorStand, monitorMaterial);
-    stand.position.set(x, 1.35, z);
-    this.scene.add(stand);
-
-    const monitorScreen = new THREE.BoxGeometry(1, 0.7, 0.1);
-    const screen = new THREE.Mesh(monitorScreen, monitorMaterial);
-    screen.position.set(x, 1.85, z);
-    this.scene.add(screen);
-
-    const screenFace = new THREE.BoxGeometry(0.9, 0.6, 0.05);
-    const face = new THREE.Mesh(screenFace, screenMaterial);
-    face.position.set(x, 1.85, z + 0.075);
-    this.scene.add(face);
+    const sunGeo = new THREE.BoxGeometry(8, 8, 1);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xFFFF88 });
+    const sun = new THREE.Mesh(sunGeo, sunMat);
+    sun.position.set(40, 60, -80);
+    sun.lookAt(0, 0, 0);
+    this.scene.add(sun);
   }
 
-  private createBookshelf(x: number, z: number): void {
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
-    
-    // Frame
-    const frame = new THREE.BoxGeometry(1.5, 3, 0.5);
-    const shelf = new THREE.Mesh(frame, woodMaterial);
-    shelf.position.set(x, 1.5, z);
-    shelf.castShadow = true;
-    this.scene.add(shelf);
+  private createGround(): void {
+    const grassTopMat = TextureGenerator.createMaterial(TextureGenerator.grassTop());
+    const grassSideMat = TextureGenerator.createMaterial(TextureGenerator.grassSide());
+    const dirtMat = TextureGenerator.createMaterial(TextureGenerator.dirt());
+    const stoneMat = TextureGenerator.createMaterial(TextureGenerator.stone());
 
-    // Books (colorful blocks)
-    const bookColors = [0xE74C3C, 0x3498DB, 0x2ECC71, 0xF39C12, 0x9B59B6];
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
-        const bookMaterial = new THREE.MeshLambertMaterial({ 
-          color: bookColors[(row + col) % bookColors.length] 
-        });
-        const bookGeometry = new THREE.BoxGeometry(0.3, 0.5, 0.35);
-        const book = new THREE.Mesh(bookGeometry, bookMaterial);
-        book.position.set(x - 0.4 + col * 0.4, 0.5 + row * 0.9, z + 0.1);
-        this.scene.add(book);
+    for (let x = -20; x <= 20; x += 1) {
+      for (let z = -15; z <= 20; z += 1) {
+        if (Math.abs(x) <= 10 && z >= -7 && z <= 12) continue;
+        
+        const grassMats = [
+          grassSideMat, grassSideMat,
+          grassTopMat, dirtMat,
+          grassSideMat, grassSideMat,
+        ];
+        
+        const grassGeo = new THREE.BoxGeometry(1, 1, 1);
+        const grass = new THREE.Mesh(grassGeo, grassMats);
+        grass.position.set(x, -0.5, z);
+        grass.receiveShadow = true;
+        this.scene.add(grass);
+      }
+    }
+
+    for (let x = -22; x <= 22; x += 1) {
+      for (let z = -17; z <= 22; z += 1) {
+        const dirtGeo = new THREE.BoxGeometry(1, 1, 1);
+        const dirt = new THREE.Mesh(dirtGeo, dirtMat);
+        dirt.position.set(x, -1.5, z);
+        this.scene.add(dirt);
+
+        const stoneGeo = new THREE.BoxGeometry(1, 1, 1);
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        stone.position.set(x, -2.5, z);
+        this.scene.add(stone);
       }
     }
   }
 
-  private createPlant(x: number, z: number): void {
-    // Pot
-    const potMaterial = new THREE.MeshLambertMaterial({ color: 0xCD853F });
-    const potGeometry = new THREE.BoxGeometry(0.6, 0.5, 0.6);
-    const pot = new THREE.Mesh(potGeometry, potMaterial);
-    pot.position.set(x, 0.25, z);
-    pot.castShadow = true;
-    this.scene.add(pot);
-
-    // Dirt in pot
-    const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
-    const dirtGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
-    const potDirt = new THREE.Mesh(dirtGeometry, dirtMaterial);
-    potDirt.position.set(x, 0.55, z);
-    this.scene.add(potDirt);
-
-    // Leaves (stacked green blocks)
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-    const leafGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.8);
+  private createFloor(): void {
+    const planksMat = TextureGenerator.createMaterial(TextureGenerator.oakPlanks());
     
-    for (let i = 0; i < 3; i++) {
-      const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
-      leaf.position.set(x, 0.75 + i * 0.25, z);
-      leaf.rotation.y = i * 0.3;
-      this.scene.add(leaf);
+    for (let x = -10; x <= 10; x++) {
+      for (let z = -7; z <= 12; z++) {
+        const plankGeo = new THREE.BoxGeometry(1, 0.2, 1);
+        const plank = new THREE.Mesh(plankGeo, planksMat);
+        plank.position.set(x, -0.1, z);
+        plank.receiveShadow = true;
+        this.scene.add(plank);
+      }
     }
   }
 
-  private createMeetingTable(x: number, z: number): void {
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
+  private createWalls(): void {
+    const stoneBricksMat = TextureGenerator.createMaterial(TextureGenerator.stoneBricks());
+    const oakLogMat = TextureGenerator.createMaterial(TextureGenerator.oakLog());
+    const glassMat = TextureGenerator.createMaterial(TextureGenerator.glass(), true);
+
+    for (let x = -10; x <= 10; x++) {
+      for (let y = 0; y < 5; y++) {
+        if (y >= 1 && y <= 3 && x >= -8 && x <= 8 && (x % 3 === 0 || x % 3 === 1)) {
+          const glassGeo = new THREE.BoxGeometry(1, 1, 0.2);
+          const glass = new THREE.Mesh(glassGeo, glassMat);
+          glass.position.set(x, y + 0.5, -7.4);
+          this.scene.add(glass);
+        } else {
+          const brickGeo = new THREE.BoxGeometry(1, 1, 1);
+          const brick = new THREE.Mesh(brickGeo, stoneBricksMat);
+          brick.position.set(x, y + 0.5, -7);
+          brick.castShadow = true;
+          this.scene.add(brick);
+        }
+      }
+    }
+
+    for (let x = -11; x <= 11; x += 22) {
+      for (let z = -7; z <= 5; z++) {
+        for (let y = 0; y < 5; y++) {
+          const brickGeo = new THREE.BoxGeometry(1, 1, 1);
+          const brick = new THREE.Mesh(brickGeo, stoneBricksMat);
+          brick.position.set(x, y + 0.5, z);
+          brick.castShadow = true;
+          this.scene.add(brick);
+        }
+      }
+    }
+
+    const corners = [[-11, -7], [11, -7], [-11, 5], [11, 5]];
+    corners.forEach(([x, z]) => {
+      for (let y = 0; y < 6; y++) {
+        const logGeo = new THREE.BoxGeometry(1, 1, 1);
+        const log = new THREE.Mesh(logGeo, oakLogMat);
+        log.position.set(x, y + 0.5, z);
+        log.castShadow = true;
+        this.scene.add(log);
+      }
+    });
+  }
+
+  private createFurniture(): void {
+    this.createDesk(-6, -4);
+    this.createDesk(6, -4);
+    this.createDesk(-6, 4);
+    this.createDesk(6, 4);
+    this.createDesk(0, 7);
+
+    this.createChest(-9, -5);
+    this.createChest(9, -5);
+    this.createChest(-9, 10);
+    this.createChest(9, 10);
+
+    this.createCraftingTable(0, 0);
+  }
+
+  private createDesk(x: number, z: number): void {
+    const planksMat = TextureGenerator.createMaterial(TextureGenerator.oakPlanks());
+    const craftTopMat = TextureGenerator.createMaterial(TextureGenerator.craftingTableTop());
+    const craftSideMat = TextureGenerator.createMaterial(TextureGenerator.craftingTableSide());
+
+    const topMats = [
+      craftSideMat, craftSideMat,
+      craftTopMat, planksMat,
+      craftSideMat, craftSideMat,
+    ];
     
-    // Table top
-    const tableTop = new THREE.BoxGeometry(4, 0.2, 2);
-    const top = new THREE.Mesh(tableTop, woodMaterial);
-    top.position.set(x, 0.8, z);
+    const topGeo = new THREE.BoxGeometry(3, 1, 2);
+    const top = new THREE.Mesh(topGeo, topMats);
+    top.position.set(x, 1, z);
     top.castShadow = true;
     this.scene.add(top);
 
-    // Table legs
-    const legGeometry = new THREE.BoxGeometry(0.25, 0.8, 0.25);
     const legPositions = [
-      [x - 1.7, 0.4, z - 0.7],
-      [x + 1.7, 0.4, z - 0.7],
-      [x - 1.7, 0.4, z + 0.7],
-      [x + 1.7, 0.4, z + 0.7],
+      [x - 1, z - 0.5],
+      [x + 1, z - 0.5],
+      [x - 1, z + 0.5],
+      [x + 1, z + 0.5],
     ];
-    
-    legPositions.forEach(([px, py, pz]) => {
-      const leg = new THREE.Mesh(legGeometry, woodMaterial);
-      leg.position.set(px, py, pz);
+
+    const oakLogMat = TextureGenerator.createMaterial(TextureGenerator.oakLog());
+    legPositions.forEach(([lx, lz]) => {
+      const legGeo = new THREE.BoxGeometry(0.3, 0.5, 0.3);
+      const leg = new THREE.Mesh(legGeo, oakLogMat);
+      leg.position.set(lx, 0.25, lz);
       leg.castShadow = true;
       this.scene.add(leg);
     });
 
-    // Chairs around table
-    this.createChair(x - 2.5, z);
-    this.createChair(x + 2.5, z);
-    this.createChair(x, z - 1.5);
-    this.createChair(x, z + 1.5);
+    const monitorGeo = new THREE.BoxGeometry(1.5, 1, 0.2);
+    const blackMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    const monitor = new THREE.Mesh(monitorGeo, blackMat);
+    monitor.position.set(x, 2, z);
+    this.scene.add(monitor);
+
+    const screenGeo = new THREE.BoxGeometry(1.3, 0.8, 0.05);
+    const screenMat = new THREE.MeshBasicMaterial({ color: 0x4488cc });
+    const screen = new THREE.Mesh(screenGeo, screenMat);
+    screen.position.set(x, 2, z + 0.1);
+    this.scene.add(screen);
   }
 
-  private createChair(x: number, z: number): void {
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const cushionMaterial = new THREE.MeshLambertMaterial({ color: 0xDC143C });
+  private createChest(x: number, z: number): void {
+    const chestFrontMat = TextureGenerator.createMaterial(TextureGenerator.chestFront());
+    const chestSideMat = TextureGenerator.createMaterial(TextureGenerator.chestSide());
 
-    // Seat
-    const seatGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.6);
-    const seat = new THREE.Mesh(seatGeometry, woodMaterial);
-    seat.position.set(x, 0.5, z);
-    this.scene.add(seat);
-
-    // Cushion
-    const cushionGeometry = new THREE.BoxGeometry(0.5, 0.08, 0.5);
-    const cushion = new THREE.Mesh(cushionGeometry, cushionMaterial);
-    cushion.position.set(x, 0.59, z);
-    this.scene.add(cushion);
-
-    // Legs
-    const legGeometry = new THREE.BoxGeometry(0.08, 0.5, 0.08);
-    const legPositions = [
-      [x - 0.22, 0.25, z - 0.22],
-      [x + 0.22, 0.25, z - 0.22],
-      [x - 0.22, 0.25, z + 0.22],
-      [x + 0.22, 0.25, z + 0.22],
+    const chestMats = [
+      chestSideMat, chestSideMat,
+      chestSideMat, chestSideMat,
+      chestFrontMat, chestSideMat,
     ];
-    
-    legPositions.forEach(([px, py, pz]) => {
-      const leg = new THREE.Mesh(legGeometry, woodMaterial);
-      leg.position.set(px, py, pz);
-      this.scene.add(leg);
-    });
 
-    // Back
-    const backGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.1);
-    const back = new THREE.Mesh(backGeometry, woodMaterial);
-    back.position.set(x, 0.85, z - 0.3);
-    this.scene.add(back);
+    const chestGeo = new THREE.BoxGeometry(1, 1, 1);
+    const chest = new THREE.Mesh(chestGeo, chestMats);
+    chest.position.set(x, 0.5, z);
+    chest.castShadow = true;
+    this.scene.add(chest);
   }
 
-  private createCoffeeStation(x: number, z: number): void {
-    // Counter
-    const counterMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
-    const counterGeometry = new THREE.BoxGeometry(2, 1, 1);
-    const counter = new THREE.Mesh(counterGeometry, counterMaterial);
-    counter.position.set(x, 0.5, z);
-    counter.castShadow = true;
-    this.scene.add(counter);
+  private createCraftingTable(x: number, z: number): void {
+    const craftTopMat = TextureGenerator.createMaterial(TextureGenerator.craftingTableTop());
+    const craftSideMat = TextureGenerator.createMaterial(TextureGenerator.craftingTableSide());
+    const planksMat = TextureGenerator.createMaterial(TextureGenerator.oakPlanks());
 
-    // Counter top (lighter)
-    const topMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
-    const topGeometry = new THREE.BoxGeometry(2.1, 0.1, 1.1);
-    const counterTop = new THREE.Mesh(topGeometry, topMaterial);
-    counterTop.position.set(x, 1.05, z);
-    this.scene.add(counterTop);
+    const tableMats = [
+      craftSideMat, craftSideMat,
+      craftTopMat, planksMat,
+      craftSideMat, craftSideMat,
+    ];
 
-    // Coffee machine (blocky)
-    const machineMaterial = new THREE.MeshLambertMaterial({ color: 0x2F2F2F });
-    const machineGeometry = new THREE.BoxGeometry(0.5, 0.6, 0.4);
-    const machine = new THREE.Mesh(machineGeometry, machineMaterial);
-    machine.position.set(x - 0.5, 1.4, z);
-    this.scene.add(machine);
+    const tableGeo = new THREE.BoxGeometry(2, 1, 2);
+    const table = new THREE.Mesh(tableGeo, tableMats);
+    table.position.set(x, 0.5, z);
+    table.castShadow = true;
+    this.scene.add(table);
+  }
 
-    // Coffee cups
-    const cupMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
-    for (let i = 0; i < 3; i++) {
-      const cupGeometry = new THREE.BoxGeometry(0.15, 0.2, 0.15);
-      const cup = new THREE.Mesh(cupGeometry, cupMaterial);
-      cup.position.set(x + 0.3 + i * 0.25, 1.2, z);
-      this.scene.add(cup);
-    }
+  private createTorches(): void {
+    const torchPositions = [
+      [-10, 2.5, -6.5],
+      [10, 2.5, -6.5],
+      [-10, 2.5, 4],
+      [10, 2.5, 4],
+      [0, 2.5, 11],
+    ];
+
+    const oakLogMat = TextureGenerator.createMaterial(TextureGenerator.oakLog());
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xFFDD44 });
+
+    torchPositions.forEach(([x, y, z]) => {
+      const stickGeo = new THREE.BoxGeometry(0.15, 0.6, 0.15);
+      const stick = new THREE.Mesh(stickGeo, oakLogMat);
+      stick.position.set(x, y, z);
+      this.scene.add(stick);
+
+      const flameGeo = new THREE.BoxGeometry(0.2, 0.3, 0.2);
+      const flame = new THREE.Mesh(flameGeo, flameMat);
+      flame.position.set(x, y + 0.4, z);
+      this.scene.add(flame);
+
+      const glowGeo = new THREE.BoxGeometry(0.1, 0.15, 0.1);
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.set(x, y + 0.5, z);
+      this.scene.add(glow);
+
+      const light = new THREE.PointLight(0xFFAA44, 0.8, 8);
+      light.position.set(x, y + 0.5, z);
+      this.scene.add(light);
+    });
   }
 
   private createDecorations(): void {
-    // Outdoor grass patches with variation
-    const grassVariants = [0x4a8f29, 0x3d7a22, 0x5ba033];
+    const oakLogMat = TextureGenerator.createMaterial(TextureGenerator.oakLog());
+    const oakLogTopMat = TextureGenerator.createMaterial(TextureGenerator.oakLogTop());
+
+    const treePositions = [[-15, -12], [15, -12], [-15, 16], [15, 16]];
     
-    for (let i = 0; i < 30; i++) {
-      const material = new THREE.MeshLambertMaterial({ 
-        color: grassVariants[Math.floor(Math.random() * grassVariants.length)] 
+    treePositions.forEach(([x, z]) => {
+      for (let y = 0; y < 4; y++) {
+        const logMats = [
+          oakLogMat, oakLogMat,
+          oakLogTopMat, oakLogTopMat,
+          oakLogMat, oakLogMat,
+        ];
+        const logGeo = new THREE.BoxGeometry(1, 1, 1);
+        const log = new THREE.Mesh(logGeo, logMats);
+        log.position.set(x, y + 0.5, z);
+        log.castShadow = true;
+        this.scene.add(log);
+      }
+
+      const leafMat = new THREE.MeshLambertMaterial({ color: 0x2D5A1D });
+      const leafPositions = [
+        [0, 4, 0], [1, 4, 0], [-1, 4, 0], [0, 4, 1], [0, 4, -1],
+        [1, 4, 1], [1, 4, -1], [-1, 4, 1], [-1, 4, -1],
+        [0, 5, 0], [1, 5, 0], [-1, 5, 0], [0, 5, 1], [0, 5, -1],
+        [0, 6, 0],
+      ];
+      
+      leafPositions.forEach(([lx, ly, lz]) => {
+        const leafGeo = new THREE.BoxGeometry(1, 1, 1);
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.set(x + lx, ly + 0.5, z + lz);
+        leaf.castShadow = true;
+        this.scene.add(leaf);
       });
-      const geometry = new THREE.BoxGeometry(
-        0.3 + Math.random() * 0.3,
-        0.1 + Math.random() * 0.2,
-        0.3 + Math.random() * 0.3
-      );
-      const patch = new THREE.Mesh(geometry, material);
-      
-      // Only place outside the wood floor area
-      let px, pz;
-      do {
-        px = (Math.random() - 0.5) * 28;
-        pz = (Math.random() - 0.5) * 28;
-      } while (Math.abs(px) < 11 && pz > -9 && pz < 13);
-      
-      patch.position.set(px, 0.1, pz);
-      this.scene.add(patch);
-    }
-
-    // Flowers
-    const flowerColors = [0xFF6B6B, 0xFFE66D, 0x4ECDC4, 0xC44DFF];
-    for (let i = 0; i < 15; i++) {
-      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      const material = new THREE.MeshLambertMaterial({ color });
-      const geometry = new THREE.BoxGeometry(0.2, 0.3, 0.2);
-      const flower = new THREE.Mesh(geometry, material);
-      
-      let px, pz;
-      do {
-        px = (Math.random() - 0.5) * 26;
-        pz = (Math.random() - 0.5) * 26;
-      } while (Math.abs(px) < 10 && pz > -8 && pz < 12);
-      
-      flower.position.set(px, 0.2, pz);
-      this.scene.add(flower);
-    }
-
-    // Trees at corners
-    this.createTree(-13, -10);
-    this.createTree(13, -10);
-    this.createTree(-13, 12);
-    this.createTree(13, 12);
-  }
-
-  private createTree(x: number, z: number): void {
-    // Trunk
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const trunkGeometry = new THREE.BoxGeometry(0.8, 3, 0.8);
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.set(x, 1.5, z);
-    trunk.castShadow = true;
-    this.scene.add(trunk);
-
-    // Leaves (stacked blocks like Minecraft)
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-    const leafPositions = [
-      [0, 3.5, 0, 2],
-      [0, 4, 0, 1.5],
-      [0, 4.5, 0, 1],
-    ];
-
-    leafPositions.forEach(([ox, oy, oz, size]) => {
-      const leafGeometry = new THREE.BoxGeometry(size, 0.8, size);
-      const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
-      leaf.position.set(x + ox, oy, z + oz);
-      leaf.castShadow = true;
-      this.scene.add(leaf);
     });
+
+    const flowerColors = [0xFF6B6B, 0xFFE66D, 0x4ECDC4, 0xFF69B4];
+    for (let i = 0; i < 20; i++) {
+      let fx: number, fz: number;
+      do {
+        fx = Math.floor(Math.random() * 40) - 20;
+        fz = Math.floor(Math.random() * 35) - 15;
+      } while (Math.abs(fx) <= 11 && fz >= -8 && fz <= 13);
+
+      const stemMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+      const stemGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.set(fx, 0.2, fz);
+      this.scene.add(stem);
+
+      const petalMat = new THREE.MeshLambertMaterial({ 
+        color: flowerColors[Math.floor(Math.random() * flowerColors.length)]
+      });
+      const petalGeo = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+      const petal = new THREE.Mesh(petalGeo, petalMat);
+      petal.position.set(fx, 0.5, fz);
+      this.scene.add(petal);
+    }
+
+    for (let i = 0; i < 30; i++) {
+      let gx: number, gz: number;
+      do {
+        gx = Math.floor(Math.random() * 40) - 20;
+        gz = Math.floor(Math.random() * 35) - 15;
+      } while (Math.abs(gx) <= 11 && gz >= -8 && gz <= 13);
+
+      const tallGrassMat = new THREE.MeshLambertMaterial({ 
+        color: Math.random() > 0.5 ? 0x3D7A22 : 0x4A8F29 
+      });
+      const tallGrassGeo = new THREE.BoxGeometry(0.1, 0.3 + Math.random() * 0.2, 0.1);
+      const tallGrass = new THREE.Mesh(tallGrassGeo, tallGrassMat);
+      tallGrass.position.set(gx + Math.random() * 0.5, 0.2, gz + Math.random() * 0.5);
+      this.scene.add(tallGrass);
+    }
   }
 
   private createLighting(): void {
-    // Ambient light (soft fill)
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
 
-    // Main directional light (sun)
     const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    sun.position.set(10, 20, 10);
+    sun.position.set(20, 40, 20);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
     sun.shadow.mapSize.height = 2048;
     sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 50;
-    sun.shadow.camera.left = -20;
-    sun.shadow.camera.right = 20;
-    sun.shadow.camera.top = 20;
-    sun.shadow.camera.bottom = -20;
+    sun.shadow.camera.far = 100;
+    sun.shadow.camera.left = -30;
+    sun.shadow.camera.right = 30;
+    sun.shadow.camera.top = 30;
+    sun.shadow.camera.bottom = -30;
     this.scene.add(sun);
 
-    // Hemisphere light for sky/ground bounce
     const hemi = new THREE.HemisphereLight(0x87CEEB, 0x4a8f29, 0.3);
     this.scene.add(hemi);
   }

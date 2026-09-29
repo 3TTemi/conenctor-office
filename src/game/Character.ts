@@ -3,8 +3,100 @@ import type { CharacterConfig, AppType, DebriefPayload } from '../connector/type
 import type { IDebriefAdapter } from '../connector/types';
 
 /**
- * Represents an NPC character in the office.
- * Each character is a blocky Minecraft-style figure with distinct colors.
+ * Creates a pixel face texture for Steve-like characters.
+ */
+function createFaceTexture(primaryColor: string, accentColor: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 8;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.fillStyle = '#C4A57B';
+  ctx.fillRect(0, 0, 8, 8);
+
+  ctx.fillStyle = primaryColor;
+  ctx.fillRect(0, 0, 8, 2);
+  ctx.fillRect(0, 0, 1, 3);
+  ctx.fillRect(7, 0, 1, 3);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(1, 2, 2, 2);
+  ctx.fillRect(5, 2, 2, 2);
+
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(2, 3, 1, 1);
+  ctx.fillRect(5, 3, 1, 1);
+
+  ctx.fillStyle = '#8B6954';
+  ctx.fillRect(3, 5, 2, 1);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  return texture;
+}
+
+/**
+ * Creates a body/clothing texture.
+ */
+function createBodyTexture(primaryColor: string, secondaryColor: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 12;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.fillStyle = primaryColor;
+  ctx.fillRect(0, 0, 8, 12);
+
+  ctx.fillStyle = secondaryColor;
+  ctx.fillRect(0, 0, 8, 1);
+  ctx.fillRect(0, 11, 8, 1);
+  ctx.fillRect(0, 0, 1, 12);
+  ctx.fillRect(7, 0, 1, 12);
+
+  ctx.fillRect(3, 4, 2, 4);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  return texture;
+}
+
+/**
+ * Creates a limb texture.
+ */
+function createLimbTexture(color: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 4;
+  canvas.height = 12;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 4, 12);
+
+  const rgb = parseInt(color.slice(1), 16);
+  const r = Math.max(0, ((rgb >> 16) & 255) - 30);
+  const g = Math.max(0, ((rgb >> 8) & 255) - 30);
+  const b = Math.max(0, (rgb & 255) - 30);
+  const darker = `rgb(${r},${g},${b})`;
+
+  ctx.fillStyle = darker;
+  ctx.fillRect(0, 0, 4, 1);
+  ctx.fillRect(0, 11, 4, 1);
+  ctx.fillRect(0, 0, 1, 12);
+  ctx.fillRect(3, 0, 1, 12);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  return texture;
+}
+
+/**
+ * Represents a Steve-like NPC character in the office.
  */
 export class Character {
   public config: CharacterConfig;
@@ -13,7 +105,10 @@ export class Character {
   
   private adapter: IDebriefAdapter;
   private animationTime: number = 0;
-  private baseY: number = 0;
+  private leftArm: THREE.Mesh | null = null;
+  private rightArm: THREE.Mesh | null = null;
+  private leftLeg: THREE.Mesh | null = null;
+  private rightLeg: THREE.Mesh | null = null;
 
   constructor(config: CharacterConfig, adapter: IDebriefAdapter) {
     this.config = config;
@@ -27,223 +122,105 @@ export class Character {
     const group = new THREE.Group();
     const { primary, secondary, accent } = this.config.colors;
 
-    // Body
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: primary });
-    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 0.9;
-    body.castShadow = true;
-    group.add(body);
-
-    // Head
-    const headMaterial = new THREE.MeshLambertMaterial({ color: secondary });
-    const headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 1.55;
+    const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const faceTexture = createFaceTexture(primary, accent);
+    const headSideTexture = this.createHeadSideTexture(primary);
+    
+    const headMaterials = [
+      new THREE.MeshLambertMaterial({ map: headSideTexture }),
+      new THREE.MeshLambertMaterial({ map: headSideTexture }),
+      new THREE.MeshLambertMaterial({ map: headSideTexture }),
+      new THREE.MeshLambertMaterial({ map: headSideTexture }),
+      new THREE.MeshLambertMaterial({ map: faceTexture }),
+      new THREE.MeshLambertMaterial({ map: headSideTexture }),
+    ];
+    
+    const head = new THREE.Mesh(headGeo, headMaterials);
+    head.position.y = 1.65;
     head.castShadow = true;
     group.add(head);
 
-    // Face features
-    this.addFaceFeatures(group);
+    const bodyGeo = new THREE.BoxGeometry(0.5, 0.75, 0.25);
+    const bodyTexture = createBodyTexture(primary, secondary);
+    const bodyMat = new THREE.MeshLambertMaterial({ map: bodyTexture });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.025;
+    body.castShadow = true;
+    group.add(body);
 
-    // Arms
-    const armMaterial = new THREE.MeshLambertMaterial({ color: primary });
-    const armGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
+    const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
+    const armTexture = createLimbTexture(primary);
+    const armMat = new THREE.MeshLambertMaterial({ map: armTexture });
     
-    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-0.4, 0.9, 0);
-    leftArm.castShadow = true;
-    group.add(leftArm);
+    this.leftArm = new THREE.Mesh(armGeo, armMat);
+    this.leftArm.position.set(-0.375, 1.025, 0);
+    this.leftArm.castShadow = true;
+    group.add(this.leftArm);
 
-    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    rightArm.position.set(0.4, 0.9, 0);
-    rightArm.castShadow = true;
-    group.add(rightArm);
+    this.rightArm = new THREE.Mesh(armGeo, armMat);
+    this.rightArm.position.set(0.375, 1.025, 0);
+    this.rightArm.castShadow = true;
+    group.add(this.rightArm);
 
-    // Legs
-    const legMaterial = new THREE.MeshLambertMaterial({ color: accent });
-    const legGeometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+    const legGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
+    const legTexture = createLimbTexture(accent);
+    const legMat = new THREE.MeshLambertMaterial({ map: legTexture });
     
-    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.15, 0.25, 0);
-    leftLeg.castShadow = true;
-    group.add(leftLeg);
+    this.leftLeg = new THREE.Mesh(legGeo, legMat);
+    this.leftLeg.position.set(-0.125, 0.375, 0);
+    this.leftLeg.castShadow = true;
+    group.add(this.leftLeg);
 
-    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    rightLeg.position.set(0.15, 0.25, 0);
-    rightLeg.castShadow = true;
-    group.add(rightLeg);
+    this.rightLeg = new THREE.Mesh(legGeo, legMat);
+    this.rightLeg.position.set(0.125, 0.375, 0);
+    this.rightLeg.castShadow = true;
+    group.add(this.rightLeg);
 
-    // App-specific decoration
-    this.addAppDecoration(group);
-
-    // Name tag
-    this.addNameTag(group);
+    this.addAppBadge(group);
 
     return group;
   }
 
-  private addFaceFeatures(group: THREE.Group): void {
-    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
-    const eyeGeometry = new THREE.BoxGeometry(0.08, 0.08, 0.05);
+  private createHeadSideTexture(hairColor: string): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
 
-    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.12, 1.6, 0.26);
-    group.add(leftEye);
+    ctx.fillStyle = '#C4A57B';
+    ctx.fillRect(0, 0, 8, 8);
 
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    rightEye.position.set(0.12, 1.6, 0.26);
-    group.add(rightEye);
+    ctx.fillStyle = hairColor;
+    ctx.fillRect(0, 0, 8, 3);
 
-    // Mouth
-    const mouthMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const mouthGeometry = new THREE.BoxGeometry(0.15, 0.05, 0.05);
-    const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-    mouth.position.set(0, 1.45, 0.26);
-    group.add(mouth);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    return texture;
   }
 
-  private addAppDecoration(group: THREE.Group): void {
+  private addAppBadge(group: THREE.Group): void {
     const { app } = this.config;
-    
-    switch (app) {
-      case 'gmail':
-        // Envelope on chest
-        this.addEnvelopeDecoration(group);
-        break;
-      case 'calendar':
-        // Calendar grid on chest
-        this.addCalendarDecoration(group);
-        break;
-      case 'notion':
-        // N logo approximation
-        this.addNotionDecoration(group);
-        break;
-      case 'drive':
-        // Triangle shape
-        this.addDriveDecoration(group);
-        break;
-      case 'github':
-        // Octocat face hint
-        this.addGitHubDecoration(group);
-        break;
-    }
-  }
+    const badgeColors: Record<AppType, number> = {
+      gmail: 0xEA4335,
+      calendar: 0x4285F4,
+      notion: 0x000000,
+      drive: 0x0F9D58,
+      github: 0x6F42C1,
+    };
 
-  private addEnvelopeDecoration(group: THREE.Group): void {
-    const whiteMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
-    const redMaterial = new THREE.MeshLambertMaterial({ color: 0xEA4335 });
+    const badgeGeo = new THREE.BoxGeometry(0.3, 0.3, 0.05);
+    const badgeMat = new THREE.MeshBasicMaterial({ color: badgeColors[app] });
+    const badge = new THREE.Mesh(badgeGeo, badgeMat);
+    badge.position.set(0, 0.9, 0.15);
+    group.add(badge);
 
-    // Envelope base
-    const envelope = new THREE.BoxGeometry(0.35, 0.25, 0.05);
-    const envMesh = new THREE.Mesh(envelope, whiteMaterial);
-    envMesh.position.set(0, 1.0, 0.18);
-    group.add(envMesh);
-
-    // Red flap
-    const flap = new THREE.BoxGeometry(0.3, 0.1, 0.03);
-    const flapMesh = new THREE.Mesh(flap, redMaterial);
-    flapMesh.position.set(0, 1.1, 0.2);
-    group.add(flapMesh);
-  }
-
-  private addCalendarDecoration(group: THREE.Group): void {
-    const whiteMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
-    const blueMaterial = new THREE.MeshLambertMaterial({ color: 0x4285F4 });
-
-    // Calendar base
-    const cal = new THREE.BoxGeometry(0.3, 0.35, 0.05);
-    const calMesh = new THREE.Mesh(cal, whiteMaterial);
-    calMesh.position.set(0, 0.95, 0.18);
-    group.add(calMesh);
-
-    // Blue header
-    const header = new THREE.BoxGeometry(0.3, 0.08, 0.03);
-    const headerMesh = new THREE.Mesh(header, blueMaterial);
-    headerMesh.position.set(0, 1.1, 0.2);
-    group.add(headerMesh);
-
-    // Grid dots
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 3; col++) {
-        const dotGeom = new THREE.BoxGeometry(0.04, 0.04, 0.02);
-        const dot = new THREE.Mesh(dotGeom, blueMaterial);
-        dot.position.set(-0.08 + col * 0.08, 0.88 + row * 0.1, 0.21);
-        group.add(dot);
-      }
-    }
-  }
-
-  private addNotionDecoration(group: THREE.Group): void {
-    const blackMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
-
-    // Bold N shape
-    const nLeft = new THREE.BoxGeometry(0.06, 0.3, 0.03);
-    const nLeftMesh = new THREE.Mesh(nLeft, blackMaterial);
-    nLeftMesh.position.set(-0.1, 0.95, 0.18);
-    group.add(nLeftMesh);
-
-    const nRight = new THREE.BoxGeometry(0.06, 0.3, 0.03);
-    const nRightMesh = new THREE.Mesh(nRight, blackMaterial);
-    nRightMesh.position.set(0.1, 0.95, 0.18);
-    group.add(nRightMesh);
-
-    const nDiag = new THREE.BoxGeometry(0.05, 0.35, 0.03);
-    const nDiagMesh = new THREE.Mesh(nDiag, blackMaterial);
-    nDiagMesh.position.set(0, 0.95, 0.18);
-    nDiagMesh.rotation.z = -0.5;
-    group.add(nDiagMesh);
-  }
-
-  private addDriveDecoration(group: THREE.Group): void {
-    const greenMaterial = new THREE.MeshLambertMaterial({ color: 0x0F9D58 });
-    const blueMaterial = new THREE.MeshLambertMaterial({ color: 0x4285F4 });
-    const yellowMaterial = new THREE.MeshLambertMaterial({ color: 0xF4B400 });
-
-    // Simplified triangle colors
-    const block1 = new THREE.BoxGeometry(0.15, 0.1, 0.03);
-    const mesh1 = new THREE.Mesh(block1, greenMaterial);
-    mesh1.position.set(-0.08, 1.05, 0.18);
-    group.add(mesh1);
-
-    const mesh2 = new THREE.Mesh(block1, blueMaterial);
-    mesh2.position.set(0.08, 1.05, 0.18);
-    group.add(mesh2);
-
-    const mesh3 = new THREE.Mesh(block1, yellowMaterial);
-    mesh3.position.set(0, 0.9, 0.18);
-    group.add(mesh3);
-  }
-
-  private addGitHubDecoration(group: THREE.Group): void {
-    const whiteMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
-
-    // Octocat face approximation (circle-ish)
-    const face = new THREE.BoxGeometry(0.3, 0.3, 0.05);
-    const faceMesh = new THREE.Mesh(face, whiteMaterial);
-    faceMesh.position.set(0, 0.95, 0.18);
-    group.add(faceMesh);
-
-    // Little ears/tentacles
-    const ear = new THREE.BoxGeometry(0.08, 0.12, 0.03);
-    const leftEar = new THREE.Mesh(ear, whiteMaterial);
-    leftEar.position.set(-0.15, 1.12, 0.18);
-    group.add(leftEar);
-
-    const rightEar = new THREE.Mesh(ear, whiteMaterial);
-    rightEar.position.set(0.15, 1.12, 0.18);
-    group.add(rightEar);
-  }
-
-  private addNameTag(group: THREE.Group): void {
-    // Floating name tag above head using a simple colored bar
-    const tagMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const tagGeometry = new THREE.BoxGeometry(1.2, 0.25, 0.05);
-    const tag = new THREE.Mesh(tagGeometry, tagMaterial);
-    tag.position.set(0, 2.1, 0);
-    group.add(tag);
-
-    // The actual name will be rendered in HTML overlay
+    const innerGeo = new THREE.BoxGeometry(0.2, 0.2, 0.02);
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.position.set(0, 0.9, 0.18);
+    group.add(inner);
   }
 
   async loadDebriefs(): Promise<void> {
@@ -252,11 +229,21 @@ export class Character {
 
   update(deltaTime: number): void {
     this.animationTime += deltaTime;
-    
-    // Gentle bobbing animation
-    this.mesh.position.y = this.baseY + Math.sin(this.animationTime * 2) * 0.03;
-    
-    // Slight rotation to face nearby player could be added here
+
+    const breathe = Math.sin(this.animationTime * 2) * 0.01;
+    this.mesh.position.y = breathe;
+
+    if (this.leftArm && this.rightArm) {
+      const armSwing = Math.sin(this.animationTime * 1.5) * 0.1;
+      this.leftArm.rotation.x = armSwing;
+      this.rightArm.rotation.x = -armSwing;
+    }
+
+    if (this.leftLeg && this.rightLeg) {
+      const legSwing = Math.sin(this.animationTime * 1.5) * 0.05;
+      this.leftLeg.rotation.x = -legSwing;
+      this.rightLeg.rotation.x = legSwing;
+    }
   }
 
   getPosition(): THREE.Vector3 {

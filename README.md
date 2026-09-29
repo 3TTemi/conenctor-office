@@ -2,6 +2,8 @@
 
 A Minecraft-style virtual office where each character represents a connected app (Gmail, Calendar, Notion, Drive, GitHub) and debriefs you on the past day's activity.
 
+**Visual style:** Authentic Minecraft look with procedural pixel textures (grass, dirt, oak planks, stone bricks, glass), Steve-like blocky characters with pixel faces, block furniture (chests, crafting-table desks, torches), and a flat daylight sky.
+
 ![Voxel Office Demo](https://img.shields.io/badge/demo-hackathon-green)
 
 ## Quick Start
