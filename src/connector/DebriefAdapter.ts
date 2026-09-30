@@ -27,55 +27,65 @@ export class FixtureDebriefAdapter implements IDebriefAdapter {
 }
 
 /**
- * Live debrief adapter skeleton.
- * This is a stub for future implementation with real API data.
+ * Live debrief adapter.
+ * Loads data from a JSON file dropped by an external host (e.g., Grok Bot).
  * 
  * Usage:
- * 1. POST debriefs to /api/debrief endpoint, or
- * 2. Drop a JSON file at /data/live-debriefs.json
+ * 1. Drop a JSON file at public/data/live-debriefs.json, or
+ * 2. POST debriefs to /api/debrief endpoint
  */
 export class LiveDebriefAdapter implements IDebriefAdapter {
   private debriefs: DebriefPayload[] = [];
-  private apiEndpoint: string;
+  private refreshPromise: Promise<void> | null = null;
 
-  constructor(apiEndpoint: string = '/api/debrief') {
-    this.apiEndpoint = apiEndpoint;
+  constructor() {
+    this.refreshPromise = this.refresh();
+  }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.refreshPromise) {
+      await this.refreshPromise;
+    }
   }
 
   async getDebriefs(app: AppType): Promise<DebriefPayload[]> {
+    await this.ensureLoaded();
     return this.debriefs.filter(d => d.app === app);
   }
 
   async getDebriefForAccount(app: AppType, account: string): Promise<DebriefPayload | null> {
+    await this.ensureLoaded();
     return this.debriefs.find(d => d.app === app && d.account === account) || null;
   }
 
   async refresh(): Promise<void> {
+    // Try local JSON file first (primary use case for Grok Bot drop-in)
     try {
-      // Try fetching from API endpoint
-      const response = await fetch(this.apiEndpoint);
-      if (response.ok) {
-        const data = await response.json();
-        this.debriefs = data.debriefs || data;
-        return;
-      }
-    } catch {
-      // API not available, try local JSON file
-    }
-
-    try {
-      // Fallback: try local JSON file
       const response = await fetch('/data/live-debriefs.json');
       if (response.ok) {
         const data = await response.json();
         this.debriefs = data.debriefs || data;
+        console.log(`LiveDebriefAdapter: Loaded ${this.debriefs.length} debriefs from JSON file`);
         return;
       }
     } catch {
-      // No live data available, stay empty
+      // JSON file not available, try API
     }
 
-    console.warn('LiveDebriefAdapter: No live data available, using empty debriefs');
+    // Fallback: try API endpoint
+    try {
+      const response = await fetch('/api/debrief');
+      if (response.ok) {
+        const data = await response.json();
+        this.debriefs = data.debriefs || data;
+        console.log(`LiveDebriefAdapter: Loaded ${this.debriefs.length} debriefs from API`);
+        return;
+      }
+    } catch {
+      // API not available
+    }
+
+    console.warn('LiveDebriefAdapter: No live data available, debriefs will be empty');
   }
 }
 
@@ -86,9 +96,8 @@ export class LiveDebriefAdapter implements IDebriefAdapter {
 export function createDebriefAdapter(): IDebriefAdapter {
   // @ts-expect-error - Vite env vars
   if (import.meta.env?.VITE_USE_LIVE_DATA === 'true') {
-    const adapter = new LiveDebriefAdapter();
-    adapter.refresh();
-    return adapter;
+    console.log('Using LiveDebriefAdapter (VITE_USE_LIVE_DATA=true)');
+    return new LiveDebriefAdapter();
   }
   return new FixtureDebriefAdapter();
 }
